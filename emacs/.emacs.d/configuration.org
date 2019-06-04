@@ -33,7 +33,7 @@ Always compile packages, and use the newest version available.
 Use [[https://github.com/hrs/sensible-defaults.el][sensible-defaults.el]] for some basic settings.
 
 #+BEGIN_SRC emacs-lisp
-  (load-file "~/code/personal/sensible-defaults.el/sensible-defaults.el")
+  (load-file "~/projects/sensible-defaults.el/sensible-defaults.el")
   (sensible-defaults/use-all-settings)
   (sensible-defaults/use-all-keybindings)
   (sensible-defaults/backup-to-temp-directory)
@@ -44,11 +44,11 @@ Use [[https://github.com/hrs/sensible-defaults.el][sensible-defaults.el]] for so
 ** Who am I? Where am I?
 
 #+BEGIN_SRC emacs-lisp
-  (setq user-full-name "Harry R. Schwartz"
-        user-mail-address "hello@harryrschwartz.com"
+  (setq user-full-name "michalz"
+        user-mail-address "zielonka.michal@gmail.com"
         calendar-latitude 40.00
         calendar-longitude -105.16
-        calendar-location-name "Boulder, CO")
+        calendar-location-name "nobody")
 #+END_SRC
 
 ** Access my netrc data
@@ -75,45 +75,6 @@ to store not-too-terribly-sensitive secrets.
 
 #+BEGIN_SRC emacs-lisp
   (add-to-list 'load-path "~/.emacs.d/resources/")
-#+END_SRC
-
-* =evil-mode=
-
-I'd prefer not to expand abbrevs when I hit escape. That's always jarring and
-usually not what I want. In particular, it makes working with Coq really
-frustrating.
-
-#+BEGIN_SRC emacs-lisp
-  (setq evil-want-abbrev-expand-on-insert-exit nil)
-#+END_SRC
-
-Use =evil=.
-
-#+BEGIN_SRC emacs-lisp
-  (use-package evil
-    :config
-    (evil-mode 1))
-#+END_SRC
-
-Enable =surround= everywhere.
-
-#+BEGIN_SRC emacs-lisp
-  (use-package evil-surround
-    :config
-    (global-evil-surround-mode 1))
-#+END_SRC
-
-Use =evil= with Org agendas.
-
-#+BEGIN_SRC emacs-lisp
-  (use-package evil-org
-    :after org
-    :config
-    (add-hook 'org-mode-hook 'evil-org-mode)
-    (add-hook 'evil-org-mode-hook
-              (lambda () (evil-org-set-key-theme)))
-    (require 'evil-org-agenda)
-    (evil-org-agenda-set-keys))
 #+END_SRC
 
 * Utility functions
@@ -319,7 +280,7 @@ Note that this overrides the default font-related keybindings from
 
 #+BEGIN_SRC emacs-lisp
   (setq hrs/default-font "Inconsolata")
-  (setq hrs/default-font-size 8)
+  (setq hrs/default-font-size 11)
   (setq hrs/current-font-size hrs/default-font-size)
 
   (setq hrs/font-change-increment 1.1)
@@ -426,7 +387,6 @@ doesn't require any additional setup. I've bound its most useful command to
 #+BEGIN_SRC emacs-lisp
   (use-package dumb-jump
     :config
-    (define-key evil-normal-state-map (kbd "M-.") 'dumb-jump-go)
     (setq dumb-jump-selector 'ivy))
 #+END_SRC
 
@@ -441,7 +401,6 @@ doesn't require any additional setup. I've bound its most useful command to
 I use =magit= to handle version control. It's lovely, but I tweak a few things:
 
 - I bring up the status menu with =C-x g=.
-- Use =evil= keybindings with =magit=.
 - The default behavior of =magit= is to ask before pushing. I haven't had any
   problems with accidentally pushing, so I'd rather not confirm that every time.
 - Per [[http://tbaggery.com/2008/04/19/a-note-about-git-commit-messages.html][tpope's suggestions]], highlight commit text in the summary line that goes
@@ -459,17 +418,9 @@ I use =magit= to handle version control. It's lovely, but I tweak a few things:
     ("C-x g" . magit-status)
 
     :config
-    (use-package evil-magit)
     (use-package with-editor)
     (setq magit-push-always-verify nil)
-    (setq git-commit-summary-max-length 50)
-
-    (with-eval-after-load 'magit-remote
-      (magit-define-popup-action 'magit-push-popup ?P
-        'magit-push-implicitly--desc
-        'magit-push-implicitly ?p t))
-
-    (add-hook 'with-editor-mode-hook 'evil-insert-state))
+    (setq git-commit-summary-max-length 50))
 #+END_SRC
 
 I've been playing around with the newly-released =forge= for managing GitHub PRs
@@ -505,10 +456,6 @@ project root (if I'm not in a "real" project).
     ("C-c v" . 'projectile-ag)
 
     :config
-    (define-key evil-normal-state-map (kbd "C-p") 'projectile-find-file)
-    (evil-define-key 'motion ag-mode-map (kbd "C-p") 'projectile-find-file)
-    (evil-define-key 'motion rspec-mode-map (kbd "C-p") 'projectile-find-file)
-
     (setq projectile-completion-system 'ivy)
     (setq projectile-switch-project-action 'projectile-dired)
     (setq projectile-require-project-root nil))
@@ -546,60 +493,6 @@ output.
 
 #+BEGIN_SRC emacs-lisp
   (setq compilation-scroll-output t)
-#+END_SRC
-
-** Coq
-
-I use =company-coq-mode=, which really helps make Proof General a more useful IDE.
-
-#+BEGIN_SRC emacs-lisp
-  (use-package company-coq)
-#+END_SRC
-
-I bind the right and left arrow keys to evaluating and retracting the next and
-previous statements. This is more convenient than the default bindings of =C-c
-C-n= and =C-c C-u=.
-
-I also like to disable =abbrev-mode=; it has a ton of abbreviations for Coq, but
-they've always been unpleasant surprises for me.
-
-#+BEGIN_SRC emacs-lisp
-  (add-hook 'coq-mode-hook
-            (lambda ()
-              (company-coq-mode)
-              (evil-define-key 'normal coq-mode-map (kbd "<down>") 'proof-assert-next-command-interactive)
-              (evil-define-key 'normal coq-mode-map (kbd "<up>") 'proof-undo-last-successful-command)
-              (evil-define-key 'normal coq-mode-map (kbd "<return>") 'company-coq-proof-goto-point)
-              (abbrev-mode 0)))
-#+END_SRC
-
-The default Proof General layout stacks the code, goal, and response buffers on
-top of each other. I like to keep my code on one side and my goal and response
-buffers on the other.
-
-#+BEGIN_SRC emacs-lisp
-  (setq proof-three-window-mode-policy 'hybrid)
-#+END_SRC
-
-Don't move point when asserting and undoing proof commands.
-
-#+BEGIN_SRC emacs-lisp
-  (setq proof-follow-mode 'ignore)
-#+END_SRC
-
-The Proof General splash screen's pretty cute, but I don't need to see it every
-time.
-
-#+BEGIN_SRC emacs-lisp
-  (setq proof-splash-enable nil)
-#+END_SRC
-
-Proof General usually evaluates each comment individually. In literate programs,
-this can result in evaluating a /ton/ of comments. This evaluates a series of
-consecutive comments as a single comment.
-
-#+BEGIN_SRC emacs-lisp
-  (setq proof-script-fly-past-comments t)
 #+END_SRC
 
 ** CSS, Sass, and Less
@@ -781,46 +674,122 @@ correctly formatted.
 ** Python
 
 #+BEGIN_SRC emacs-lisp
-  (use-package python-mode)
+(use-package lsp-mode
+  :ensure t
+  :commands lsp
+  :init
+  (setq lsp-auto-guess-root t)
+  (setq lsp-prefer-flymake nil)
+  :config
+  (require 'lsp-clients)
+  (add-hook 'prog-mode-hook (lambda () (flymake-mode -1)))
+  (define-key lsp-mode-map (kbd "S-<f6>") 'lsp-rename)
+  :hook ((python-mode java-mode bash-mode lua-mode ruby-mode) . lsp))
+
+(use-package lsp-ui
+  :ensure t
+  :commands lsp-ui-mode)
+
+(use-package company-lsp
+  :ensure t
+  :commands company-lsp)
+
+(use-package lsp-java
+  :ensure t)
+
+(use-package dap-mode
+  :ensure t
+  :config
+  (dap-mode 1)
+  (dap-ui-mode 1)
+  (require 'dap-java)
+(require 'dap-python))
 #+END_SRC
 
-Add =~/.local/bin= to load path. That's where =virtualenv= is installed, and
-we'll need that for =jedi=.
-
 #+BEGIN_SRC emacs-lisp
-  (hrs/append-to-path "~/.local/bin")
-#+END_SRC
 
-Enable =elpy=. This provides automatic indentation, auto-completion, syntax
-checking, etc.
+(setq py-autopep8-options '("--max-line-length=88"))
 
-#+BEGIN_SRC emacs-lisp
-  (use-package elpy)
-  (elpy-enable)
-#+END_SRC
+(setq python-saved-check-command nil)
 
-Use =flycheck= for syntax checking:
 
-#+BEGIN_SRC emacs-lisp
-  (add-hook 'elpy-mode-hook 'flycheck-mode)
-#+END_SRC
+(defun wcx-restart-python ()
+  (require 'wcx-utils)
+  (set-variable 'ycmd-server-command `(,(executable-find "python3") ,(file-truename "~/.emacs.d/ycmd/ycmd/")))
+  (pyvenv-restart-python)
+  (ycmd-restart-semantic-server)
+  (lsp))
 
-Format code according to PEP8 on save:
+(use-package auto-virtualenv
+  :ensure t
+  :config
+  (add-hook 'python-mode-hook 'auto-virtualenv-set-virtualenv)
+  (add-hook 'projectile-after-switch-project-hook 'auto-virtualenv-set-virtualenv)
+  (add-hook 'pyvenv-post-activate-hooks 'wcx-restart-python))
 
-#+BEGIN_SRC emacs-lisp
-  (use-package py-autopep8)
-  (require 'py-autopep8)
-  (add-hook 'elpy-mode-hook 'py-autopep8-enable-on-save)
-#+END_SRC
+;; (use-package anaconda-mode
+;;   :ensure t
+;;   :config
+;;   (add-hook 'python-mode-hook 'anaconda-mode)
+;;   (add-hook 'python-mode-hook 'anaconda-eldoc-mode)
+;;   :diminish anaconda-mode
+;;   :diminish eldoc-mode
+;;   :diminish auto-revert-mode)
 
-Configure Jedi along with the associated =company= mode:
+;; (use-package company-anaconda
+;;   :ensure t
+;;   :config
+;;   (add-to-list 'company-backends 'company-anaconda))
+;;
 
-#+BEGIN_SRC emacs-lisp
-  (use-package company-jedi)
-  (add-to-list 'company-backends 'company-jedi)
+(use-package python-docstring
+  :ensure t
+  :config
+  (python-docstring-install)
+  :diminish python-docstring-mode)
 
-  (add-hook 'python-mode-hook 'jedi:setup)
-  (setq jedi:complete-on-dot t)
+;; ipython support, also remove weird character on ipython prompt
+(when (executable-find "ipython")
+  (setq python-shell-interpreter "ipython")
+  (setq python-shell-interpreter-args "--simple-prompt"))
+
+(use-package blacken
+  :ensure t
+  :diminish blacken-mode
+  ;; :hook (python-mode . blacken-mode)
+  :config
+  ;; (setq blacken-line-length 100)
+  :bind (([?\C-c ?\C-x ?a] . blacken-buffer)))
+
+(use-package pyvenv
+  :ensure t
+  :bind (([?\C-c ?\C-x ?v] . pyvenv-workon)))
+
+(use-package pip-requirements
+  :ensure t
+  :preface
+  (defun me/pip-requirements-ignore-case ()
+    (setq-local completion-ignore-case t))
+  :init (add-hook 'pip-requirements-mode-hook #'me/pip-requirements-ignore-case))
+
+(use-package python-pytest
+  :ensure t
+  :bind (("C-c C-x t" . python-pytest-popup)))
+
+(use-package smart-dash
+  :ensure t
+  :config
+  (add-hook 'python-mode-hook 'smart-dash-mode))
+
+(use-package pipenv
+  :ensure t
+  :hook (python-mode . pipenv-mode)
+  :diminish pipenv-mode
+  :init
+  (setq
+   pipenv-projectile-after-switch-function
+   #'pipenv-projectile-after-switch-default)
+(setq pipenv-keymap-prefix (kbd "C-c C-o")))
 #+END_SRC
 
 ** Ruby and RSpec
@@ -974,13 +943,6 @@ Don't show the startup message with launching ENSIME:
   (setq ensime-startup-notification nil)
 #+END_SRC
 
-Bind a few keys to common operations:
-
-#+BEGIN_SRC emacs-lisp
-  (evil-define-key 'normal ensime-mode-map (kbd "C-t") 'ensime-type-at-point)
-  (evil-define-key 'normal ensime-mode-map (kbd "M-.") 'ensime-edit-definition)
-#+END_SRC
-
 ** =web-mode=
 
 #+BEGIN_SRC emacs-lisp
@@ -1038,14 +1000,6 @@ Use a login shell:
 
 #+BEGIN_SRC emacs-lisp
   (setq multi-term-program-switches "--login")
-#+END_SRC
-
-I'd rather not use Evil in the terminal. It's not especially useful (I don't use
-vi bindings in xterm) and it shadows useful keybindings (=C-d= for EOF, for
-example).
-
-#+BEGIN_SRC emacs-lisp
-  (evil-set-initial-state 'term-mode 'emacs)
 #+END_SRC
 
 I add a bunch of hooks to =term-mode=:
@@ -1219,13 +1173,6 @@ Define a few common tasks as capture templates. Specifically, I frequently:
            "* TODO %?\n")))
 #+END_SRC
 
-When I'm starting an Org capture template I'd like to begin in insert mode. I'm
-opening it up in order to start typing something, so this skips a step.
-
-#+BEGIN_SRC emacs-lisp
-  (add-hook 'org-capture-mode-hook 'evil-insert-state)
-#+END_SRC
-
 Refiling according to the document's hierarchy.
 
 #+BEGIN_SRC emacs-lisp
@@ -1359,7 +1306,7 @@ Include the =minted= package in all of my LaTeX exports.
 I have a few Org project definitions that I maintain in a separate elisp file.
 
 #+BEGIN_SRC emacs-lisp
-  (load-file ".emacs.d/projects.el")
+  ;; (load-file ".emacs.d/projects.el")
 #+END_SRC
 
 ** TeX configuration
@@ -1539,218 +1486,6 @@ Open the checklist and my TODO list side-by-side:
   (global-set-key (kbd "C-c d") 'hrs/dashboard)
 #+END_SRC
 
-* Email with =mu4e=
-
-Use the =evil= bindings for navigation. They're very similar to the =mutt=
-bindings, which matches my muscle memory nicely. =)
-
-#+BEGIN_SRC emacs-lisp
-  (use-package evil-mu4e)
-  (require 'evil-mu4e)
-#+END_SRC
-
-** Where's my mail? Who am I?
-
-I keep my mail in =~/.mail=. The default maildir would be =~/Maildir=, but I'd
-rather hide it; I don't poke around in there manually very often.
-
-This setting matches the paths in my =mbsync= configuration.
-
-#+BEGIN_SRC emacs-lisp
-  (setq mu4e-maildir "~/.mail")
-#+END_SRC
-
-I only have one context at the moment. If I had another email account, though,
-I'd define it in here with an additional =make-mu4e-context= block.
-
-My full name is defined earlier in this configuration file.
-
-#+BEGIN_SRC emacs-lisp
-  (setq mu4e-contexts
-        `(,(make-mu4e-context
-            :name "personal"
-            :match-func (lambda (msg)
-                          (when msg
-                            (string-prefix-p "/personal" (mu4e-message-field msg :maildir))))
-            :vars '((user-mail-address . "hello@harryrschwartz.com")
-                    (mu4e-trash-folder . "/personal/archive")
-                    (mu4e-refile-folder . "/personal/archive")
-                    (mu4e-sent-folder . "/personal/sent")
-                    (mu4e-drafts-folder . "/personal/drafts")))))
-#+END_SRC
-
-** Fetching new mail
-
-I fetch my email with =mbsync=. I've also bound "o" to fetch new mail.
-
-#+BEGIN_SRC emacs-lisp
-  (setq mu4e-get-mail-command "killall --quiet mbsync; mbsync inboxes")
-
-  (define-key mu4e-headers-mode-map (kbd "o") 'mu4e-update-mail-and-index)
-#+END_SRC
-
-Rename files when moving them between directories. =mbsync= supposedly prefers
-this; I'm cargo-culting.
-
-#+BEGIN_SRC emacs-lisp
-  (setq mu4e-change-filenames-when-moving t)
-#+END_SRC
-
-Poll the server for new mail every 5 minutes.
-
-#+BEGIN_SRC emacs-lisp
-  (setq mu4e-update-interval 300)
-#+END_SRC
-
-** Viewing mail
-
-I check my email pretty often! Probably more than I should. This binds =C-c m=
-to close any other windows and open my personal inbox.
-
-In practice, I keep an =*mu4e-headers*= buffer in its own frame, full-screen, on
-a dedicated =i3= workspace.
-
-#+BEGIN_SRC emacs-lisp
-  (defun hrs/visit-inbox ()
-    (interactive)
-    (delete-other-windows)
-    (mu4e~headers-jump-to-maildir "/personal/inbox"))
-
-  (global-set-key (kbd "C-c m") 'hrs/visit-inbox)
-#+END_SRC
-
-Open my inbox and sent messages folders with =J-i= and =J-s=, respectively.
-These are the only two folders I visit regularly enough to warrant shortcuts.
-
-#+BEGIN_SRC emacs-lisp
-  (setq mu4e-maildir-shortcuts '(("/personal/inbox" . ?i)
-                                 ("/personal/sent" . ?s)))
-#+END_SRC
-
-=mu4e= starts approximately instantaneously, so I don't know why I'd want to
-reconsider quitting it.
-
-#+BEGIN_SRC emacs-lisp
-  (setq mu4e-confirm-quit nil)
-#+END_SRC
-
-** Composing a new message
-
-When I'm composing a new email, default to using the first context.
-
-#+BEGIN_SRC emacs-lisp
-  (setq mu4e-compose-context-policy 'pick-first)
-#+END_SRC
-
-Compose new messages (as with =C-x m=) using =mu4e-user-agent=.
-
-#+BEGIN_SRC emacs-lisp
-  (setq mail-user-agent 'mu4e-user-agent)
-#+END_SRC
-
-Enable Org-style tables and list manipulation.
-
-#+BEGIN_SRC emacs-lisp
-  (add-hook 'message-mode-hook 'turn-on-orgtbl)
-  (add-hook 'message-mode-hook 'turn-on-orgstruct++)
-#+END_SRC
-
-Once I've sent an email, kill the associated buffer instead of just burying it.
-
-#+BEGIN_SRC emacs-lisp
-  (setq message-kill-buffer-on-exit t)
-#+END_SRC
-
-** Reading an email
-
-Display the sender's email address along with their name.
-
-#+BEGIN_SRC emacs-lisp
-  (setq mu4e-view-show-addresses t)
-#+END_SRC
-
-Save attachments in my =~/downloads= directory, not my home directory.
-
-#+BEGIN_SRC emacs-lisp
-  (setq mu4e-attachment-dir "~/downloads")
-#+END_SRC
-
-Hit =C-c C-o= to open a URL in the browser.
-
-#+BEGIN_SRC emacs-lisp
-  (define-key mu4e-view-mode-map (kbd "C-c C-o") 'mu4e~view-browse-url-from-binding)
-#+END_SRC
-
-While HTML emails are undeniably sinful, we often have to read them. That's
-sometimes best done in a browser. This effectively binds =a h= to open the
-current email in my default Web browser.
-
-#+BEGIN_SRC emacs-lisp
-  (add-to-list 'mu4e-view-actions '("html in browser" . mu4e-action-view-in-browser) t)
-#+END_SRC
-
-** Encryption
-
-If a message is encrypted, my reply should always be encrypted, too.
-
-#+BEGIN_SRC emacs-lisp
-  (defun hrs/encrypt-responses ()
-    (let ((msg mu4e-compose-parent-message))
-      (when msg
-        (when (member 'encrypted (mu4e-message-field msg :flags))
-          (mml-secure-message-encrypt-pgpmime)))))
-
-  (add-hook 'mu4e-compose-mode-hook 'hrs/encrypt-responses)
-#+END_SRC
-
-** Sending mail over SMTP
-
-I send my email through =msmtp=. It's very fast, and I've already got it
-configured from using =mutt=. These settings describe how to send a message:
-
-- Use a sendmail program instead of sending directly from Emacs,
-- Tell =msmtp= to infer the correct account from the =From:= address,
-- Don't add a "=-f username=" flag to the =msmtp= command, and
-- Use =/usr/bin/msmtp=!
-
-#+BEGIN_SRC emacs-lisp
-  (setq message-send-mail-function 'message-send-mail-with-sendmail)
-  (setq message-sendmail-extra-arguments '("--read-envelope-from"))
-  (setq message-sendmail-f-is-evil 't)
-  (setq sendmail-program "msmtp")
-#+END_SRC
-
-** Org integration
-
-=org-mu4e= lets me store links to emails. I use this to reference emails in my
-TODO list while keeping my inbox empty.
-
-#+BEGIN_SRC emacs-lisp
-  (require 'org-mu4e)
-#+END_SRC
-
-When storing a link to a message in the headers view, link to the message
-instead of the search that resulted in that view.
-
-#+BEGIN_SRC emacs-lisp
-  (setq org-mu4e-link-query-in-headers-mode nil)
-#+END_SRC
-
-** Configure BBDB with mu4e
-
-Use BBDB to handle my address book.
-
-#+BEGIN_SRC emacs-lisp
-  (use-package bbdb)
-  (require 'bbdb-mu4e)
-#+END_SRC
-
-Don't try to do address completion with mu4e. Use BBDB instead:
-
-#+BEGIN_SRC emacs-lisp
-  (setq mu4e-compose-complete-addresses nil)
-#+END_SRC
-
 * RSS with =elfeed=
 
 Install elfeed:
@@ -1783,8 +1518,7 @@ composing an email, or authoring a Git commit.
     (add-hook 'gfm-mode-hook 'flyspell-mode)
     (add-hook 'org-mode-hook 'flyspell-mode)
 
-    (add-hook 'git-commit-mode-hook 'flyspell-mode)
-    (add-hook 'mu4e-compose-mode-hook 'flyspell-mode))
+    (add-hook 'git-commit-mode-hook 'flyspell-mode))
 #+END_SRC
 
 ** Look up definitions in Webster 1913
@@ -1919,12 +1653,15 @@ Use flycheck in the appropriate buffers:
 
     (setq deft-directory "~/documents/notes"
           deft-recursive t
-          deft-use-filename-as-title t)
-
-    (evil-set-initial-state 'deft-mode 'emacs))
+          deft-use-filename-as-title t))
 #+END_SRC
 
 * =dired=
+
+Don't use dired in ls
+#+BEGIN_SRC emacs-lisp
+  (setq dired-use-ls-dired nil)
+#+END_SRC
 
 Hide dotfiles by default, but toggle their visibility with =.=.
 
@@ -1954,17 +1691,10 @@ files. We're using:
 - =l=: Use the long listing format.
 - =h=: Use human-readable sizes.
 - =v=: Sort numbers naturally.
-- =A=: Almost all. Doesn't include "=.=" or "=..=".
+- =a=: all. Include "=.=" or "=..=".
 
 #+BEGIN_SRC emacs-lisp
-  (setq-default dired-listing-switches "-lhvA")
-#+END_SRC
-
-Use "j" and "k" to move around in =dired=.
-
-#+BEGIN_SRC emacs-lisp
-  (evil-define-key 'normal dired-mode-map (kbd "j") 'dired-next-line)
-  (evil-define-key 'normal dired-mode-map (kbd "k") 'dired-previous-line)
+  (setq-default dired-listing-switches "-lhva")
 #+END_SRC
 
 Kill buffers of files/directories that are deleted in =dired=.
@@ -1996,6 +1726,16 @@ Open a file with an external program (that is, through =xdg-open=) by hitting
       (call-process "xdg-open" nil 0 nil file)))
 
   (define-key dired-mode-map (kbd "C-c C-o") 'dired-xdg-open)
+#+END_SRC
+
+#+BEGIN_SRC emacs-lisp
+  (require 'ls-lisp)
+  (setq ls-lisp-use-insert-directory-program nil)
+#+END_SRC
+
+* ediff
+#+BEGIN_SRC emacs-lisp
+  (advice-add 'ediff-window-display-p :override #'ignore)
 #+END_SRC
 
 * Editing settings
@@ -2032,7 +1772,6 @@ buffers.
   (global-set-key (kbd "C-h f") #'helpful-callable)
   (global-set-key (kbd "C-h v") #'helpful-variable)
   (global-set-key (kbd "C-h k") #'helpful-key)
-  (evil-define-key 'normal helpful-mode-map (kbd "q") 'quit-window)
 #+END_SRC
 
 ** Look for executables in =/usr/local/bin=
@@ -2105,24 +1844,87 @@ This configuration:
 - Includes recent files in the switch buffer.
 
 #+BEGIN_SRC emacs-lisp
+  (use-package ivy
+    :ensure t
+    :diminish ivy-mode
+    :bind (("C-c C-r" . ivy-resume)
+           ("C-x b" . ivy-switch-buffer)
+           ("C-s" . counsel-grep-or-swiper)
+           ("C-c C-u" . swiper-all)
+           ("C-c C-e" . ivy-wgrep-change-to-wgrep-mode)
+           :map ivy-minibuffer-map
+           ("RET" . ivy-alt-done)
+           ("C-m" . ivy-alt-done)
+           ("C-j" . ivy-done))
+    :config
+    (progn
+      ;; Fuzzy matching
+      (use-package flx :ensure t)
+      (setq ivy-use-virtual-buffers t
+            ivy-use-selectable-prompt t
+            enable-recursive-minibuffers t
+            ivy-display-style 'fancy
+            ivy-height 8
+            ivy-virtual-abbreviate 'full
+            ivy-extra-directories nil
+            ivy-re-builders-alist '((swiper . ivy--regex-plus)
+                                    (t . ivy--regex-ignore-order)))
+  (ivy-mode 1)))
+#+END_SRC
+#+BEGIN_SRC emacs-lisp
   (use-package counsel
     :bind
     ("M-x" . 'counsel-M-x)
-    ("C-s" . 'swiper)
 
     :config
-    (use-package flx)
     (use-package smex)
 
-    (ivy-mode 1)
-    (setq ivy-use-virtual-buffers t)
     (setq ivy-count-format "(%d/%d) ")
-    (setq ivy-initial-inputs-alist nil)
-    (setq ivy-re-builders-alist
-          '((swiper . ivy--regex-plus)
-            (t . ivy--regex-fuzzy))))
+    (setq ivy-initial-inputs-alist nil))
 #+END_SRC
-
+#+BEGIN_SRC emacs-lisp
+  (use-package ivy-rich
+    :after counsel
+    :init
+    (setq ivy-format-function #'ivy-format-function-line)
+    ;; Toggle `ivy-rich-mode' after modifying.
+    (setq ivy-rich-display-transformers-list
+          `(ivy-switch-buffer
+            (:columns
+             ((ivy-rich-candidate
+               (:width 0.3))
+              (ivy-rich-switch-buffer-size
+               (:width 8))
+              (ivy-rich-switch-buffer-indicators
+               (:width 4 :face error :align right))
+              (ivy-rich-switch-buffer-major-mode
+               (:width 15 :face warning))
+              (ivy-rich-switch-buffer-project
+               (:width 20 :face success))
+              (ivy-rich-switch-buffer-path
+               (:width (lambda (x)
+                         (ivy-rich-switch-buffer-shorten-path
+                          x (ivy-rich-minibuffer-width 0.3))))))
+             :predicate (lambda (cand) (get-buffer cand)))
+            counsel-M-x (:columns
+                         ((counsel-M-x-transformer (:width 0.3))
+                          (ivy-rich-counsel-function-docstring
+                           (:face font-lock-doc-face))))
+            counsel-describe-function
+            (:columns
+             ((counsel-describe-function-transformer (:width 0.3))
+              (ivy-rich-counsel-function-docstring (:face font-lock-doc-face))))
+            counsel-describe-variable
+            (:columns
+             ((counsel-describe-variable-transformer (:width 0.3))
+              (ivy-rich-counsel-variable-docstring (:face font-lock-doc-face))))
+            counsel-recentf
+            (:columns
+             ((ivy-rich-candidate (:width 0.5))
+              (ivy-rich-file-last-modified-time (:face font-lock-comment-face))))))
+    :config
+    (ivy-rich-mode 1))
+#+END_SRC
 ** Switch and rebalance windows when splitting
 
 When splitting a window, I invariably want to switch to the new window. This
