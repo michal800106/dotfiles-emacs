@@ -137,6 +137,26 @@ Define a big ol' bunch of handy utility functions.
     (add-to-list 'exec-path path))
 #+END_SRC
 
+* Databases
+  #+BEGIN_SRC emacs-lisp
+    (use-package ejc-sql
+      :ensure t
+      :config (add-hook 'ejc-sql-minor-mode-hook
+                        (lambda ()
+                          (auto-complete-mode t)
+                          (ejc-ac-setup))
+              (add-hook 'ejc-sql-connected-hook
+                        (lambda ()
+                          (ejc-set-fetch-size nil)
+                          (ejc-set-max-rows nil)
+                          (ejc-set-column-width-limit nil)
+                          (ejc-set-use-unicode t)))
+              ))
+  #+END_SRC
+
+  #+RESULTS:
+  : t
+
 * UI preferences
 ** Tweak window chrome
 
@@ -532,7 +552,7 @@ Install =go-mode= and related packages:
 Define my =$GOPATH= and tell Emacs where to find the Go binaries.
 
 #+BEGIN_SRC emacs-lisp
-  (setenv "GOPATH" "/home/hrs/code/go")
+  (setenv "GOPATH" "/home/michalz/go")
   (hrs/append-to-path (concat (getenv "GOPATH") "/bin"))
 #+END_SRC
 
@@ -674,122 +694,112 @@ correctly formatted.
 ** Python
 
 #+BEGIN_SRC emacs-lisp
-(use-package lsp-mode
-  :ensure t
-  :commands lsp
-  :init
-  (setq lsp-auto-guess-root t)
-  (setq lsp-prefer-flymake nil)
-  :config
-  (require 'lsp-clients)
-  (add-hook 'prog-mode-hook (lambda () (flymake-mode -1)))
-  (define-key lsp-mode-map (kbd "S-<f6>") 'lsp-rename)
-  :hook ((python-mode java-mode bash-mode lua-mode ruby-mode) . lsp))
+  (setq python-saved-check-command nil)
 
-(use-package lsp-ui
-  :ensure t
-  :commands lsp-ui-mode)
+  (defun find_nearest_tox_venv ()
+    (let ((dominating-file (locate-dominating-file default-directory
+                                                   (lambda (dir)
+                                                     (cl-intersection
+                                                      `(".tox")
+                                                      (directory-files dir)
+                                                      :test 'string-equal)))))
+      (when dominating-file
+        (expand-file-name ".tox/py37" dominating-file))))
 
-(use-package company-lsp
-  :ensure t
-  :commands company-lsp)
+  (defun activate-venv-and-reload ()
+    (let ((venv (find_nearest_tox_venv)))
+      (when venv
+        (pyvenv-activate venv))))
 
-(use-package lsp-java
-  :ensure t)
+  ;; (use-package auto-virtualenv
+  ;;   :ensure t
+  ;;   :config
+  ;;   ;; (add-hook 'python-mode-hook 'auto-virtualenv-set-virtualenv)
+  ;;   ;; (add-hook 'projectile-after-switch-project-hook 'auto-virtualenv-set-virtualenv)
 
-(use-package dap-mode
-  :ensure t
-  :config
-  (dap-mode 1)
-  (dap-ui-mode 1)
-  (require 'dap-java)
-(require 'dap-python))
-#+END_SRC
+  (defvar venv_switch-buffer-functions--last-buffer
+    nil
+    "The last current buffer.")
 
-#+BEGIN_SRC emacs-lisp
+  (defun venv_switch-buffer-functions-run (&rest _)
+    "Run `switch-buffer-functions' if needed.
+  This function checks the result of `current-buffer', and run
+  `switch-buffer-functions' when it has been changed from
+  the last buffer.
+  This function should be hooked to `post-command-hook'."
+    (when (eq major-mode 'python-mode)
+    (unless (eq (current-buffer)
+                  venv_switch-buffer-functions--last-buffer)
+        (let ((current (current-buffer))
+              (previous venv_switch-buffer-functions--last-buffer))
+          (setq venv_switch-buffer-functions--last-buffer
+                current)
+          (activate-venv-and-reload)))))
+  (add-hook 'window-selection-change-functions 'venv_switch-buffer-functions-run)
 
-(setq py-autopep8-options '("--max-line-length=88"))
+  ;; ;; (use-package anaconda-mode
+  ;;   :ensure t
+  ;;   :config
+  ;;   (add-hook 'python-mode-hook 'anaconda-mode)
+  ;;   (add-hook 'python-mode-hook 'anaconda-eldoc-mode)
+  ;;   :diminish anaconda-mode
+  ;;   :diminish eldoc-mode
+  ;;   :diminish auto-revert-mode)
 
-(setq python-saved-check-command nil)
+  ;; (use-package company-anaconda
+  ;;   :ensure t
+  ;;   :config
+  ;;   (add-to-list 'company-backends 'company-anaconda))
+  ;;
 
+  (use-package python-docstring
+    :ensure t
+    :config
+    (python-docstring-install)
+    :diminish python-docstring-mode)
 
-(defun wcx-restart-python ()
-  (require 'wcx-utils)
-  (set-variable 'ycmd-server-command `(,(executable-find "python3") ,(file-truename "~/.emacs.d/ycmd/ycmd/")))
-  (pyvenv-restart-python)
-  (ycmd-restart-semantic-server)
-  (lsp))
+  ;; ipython support, also remove weird character on ipython prompt
+  (when (executable-find "ipython")
+    (setq python-shell-interpreter "ipython")
+    (setq python-shell-interpreter-args "--simple-prompt"))
 
-(use-package auto-virtualenv
-  :ensure t
-  :config
-  (add-hook 'python-mode-hook 'auto-virtualenv-set-virtualenv)
-  (add-hook 'projectile-after-switch-project-hook 'auto-virtualenv-set-virtualenv)
-  (add-hook 'pyvenv-post-activate-hooks 'wcx-restart-python))
+  (use-package blacken
+    :ensure t
+    :diminish blacken-mode
+    ;; :hook (python-mode . blacken-mode)
+    :config
+    ;; (setq blacken-line-length 100)
+    :bind (([?\C-c ?\C-x ?a] . blacken-buffer)))
 
-;; (use-package anaconda-mode
-;;   :ensure t
-;;   :config
-;;   (add-hook 'python-mode-hook 'anaconda-mode)
-;;   (add-hook 'python-mode-hook 'anaconda-eldoc-mode)
-;;   :diminish anaconda-mode
-;;   :diminish eldoc-mode
-;;   :diminish auto-revert-mode)
+  (use-package pyvenv
+    :ensure t
+    :bind (([?\C-c ?\C-x ?v] . pyvenv-workon)))
 
-;; (use-package company-anaconda
-;;   :ensure t
-;;   :config
-;;   (add-to-list 'company-backends 'company-anaconda))
-;;
+  (use-package pip-requirements
+    :ensure t
+    :preface
+    (defun me/pip-requirements-ignore-case ()
+      (setq-local completion-ignore-case t))
+    :init (add-hook 'pip-requirements-mode-hook #'me/pip-requirements-ignore-case))
 
-(use-package python-docstring
-  :ensure t
-  :config
-  (python-docstring-install)
-  :diminish python-docstring-mode)
+  (use-package python-pytest
+    :ensure t
+    :bind (("C-c C-x t" . python-pytest-popup)))
 
-;; ipython support, also remove weird character on ipython prompt
-(when (executable-find "ipython")
-  (setq python-shell-interpreter "ipython")
-  (setq python-shell-interpreter-args "--simple-prompt"))
+  (use-package smart-dash
+    :ensure t
+    :config
+    (add-hook 'python-mode-hook 'smart-dash-mode))
 
-(use-package blacken
-  :ensure t
-  :diminish blacken-mode
-  ;; :hook (python-mode . blacken-mode)
-  :config
-  ;; (setq blacken-line-length 100)
-  :bind (([?\C-c ?\C-x ?a] . blacken-buffer)))
-
-(use-package pyvenv
-  :ensure t
-  :bind (([?\C-c ?\C-x ?v] . pyvenv-workon)))
-
-(use-package pip-requirements
-  :ensure t
-  :preface
-  (defun me/pip-requirements-ignore-case ()
-    (setq-local completion-ignore-case t))
-  :init (add-hook 'pip-requirements-mode-hook #'me/pip-requirements-ignore-case))
-
-(use-package python-pytest
-  :ensure t
-  :bind (("C-c C-x t" . python-pytest-popup)))
-
-(use-package smart-dash
-  :ensure t
-  :config
-  (add-hook 'python-mode-hook 'smart-dash-mode))
-
-(use-package pipenv
-  :ensure t
-  :hook (python-mode . pipenv-mode)
-  :diminish pipenv-mode
-  :init
-  (setq
-   pipenv-projectile-after-switch-function
-   #'pipenv-projectile-after-switch-default)
-(setq pipenv-keymap-prefix (kbd "C-c C-o")))
+  (use-package pipenv
+    :ensure t
+    :hook (python-mode . pipenv-mode)
+    :diminish pipenv-mode
+    :init
+    (setq
+     pipenv-projectile-after-switch-function
+     #'pipenv-projectile-after-switch-default)
+    (setq pipenv-keymap-prefix (kbd "C-c C-o")))
 #+END_SRC
 
 ** Ruby and RSpec
@@ -1738,7 +1748,7 @@ Open a file with an external program (that is, through =xdg-open=) by hitting
   (advice-add 'ediff-window-display-p :override #'ignore)
 #+END_SRC
 
-* Editing settings
+* TODO Editing settings
 
 ** Quickly visit Emacs configuration
 
@@ -1923,6 +1933,7 @@ This configuration:
              ((ivy-rich-candidate (:width 0.5))
               (ivy-rich-file-last-modified-time (:face font-lock-comment-face))))))
     :config
+    (setq ivy-rich-parse-remote-buffer nil)
     (ivy-rich-mode 1))
 #+END_SRC
 ** Switch and rebalance windows when splitting
@@ -2028,8 +2039,68 @@ Remap when working in terminal Emacs.
 #+BEGIN_SRC emacs-lisp
   (define-key input-decode-map "\e[1;2A" [S-up])
 #+END_SRC
-* Extra
+* windows
+#+BEGIN_SRC lisp
+(use-package eyebrowse
+  :ensure t
+  :diminish eyebrowse-mode
+  :config (progn
+            (define-key global-map (kbd "C-c-1") 'eyebrowse-switch-to-window-config-1)
+            (define-key global-map (kbd "C-c-2") 'eyebrowse-switch-to-window-config-2)
+            (define-key global-map (kbd "C-c-3") 'eyebrowse-switch-to-window-config-3)
+            (define-key global-map (kbd "C-c-4") 'eyebrowse-switch-to-window-config-4)
+            (define-key global-map (kbd "C-c-5") 'eyebrowse-switch-to-window-config-5)
+            (define-key global-map (kbd "C-c-6") 'eyebrowse-switch-to-window-config-6)
+            (define-key global-map (kbd "C-c-7") 'eyebrowse-switch-to-window-config-7)
+            (define-key global-map (kbd "C-c-8") 'eyebrowse-switch-to-window-config-8)
+            (define-key global-map (kbd "C-c-9") 'eyebrowse-switch-to-window-config-9)
+            (define-key global-map (kbd "C-c-0") 'eyebrowse-switch-to-window-config-0)
+            (eyebrowse-mode t)
+            (setq eyebrowse-new-workspace t)))
+#+END_SRC
+* slack
+#+BEGIN_SRC emacs-lisp
+  (use-package slack
+    :commands (slack-start)
+    :init
+    (setq slack-buffer-emojify t) ;; if you want to enable emoji, default nil
+    (setq slack-prefer-current-team t)
+    (setq lui-time-stamp-format "[%Y-%m-%d %H:%M]")
+    :config
+    (slack-register-team
+     :name "Bee-Fee Zone"
+     :client-id nil
+     :client-secret nil
+     :token slack-token)
+    (start-process "slackghost" "*slackghost*" "slackghost"))
+  (use-package alert
+    :commands (alert)
+    :init
+    (setq alert-default-style 'libnotify))
 
+#+END_SRC
+* Extra
+#+BEGIN_SRC emacs-lisp
+  (defun x-paste ()
+    "insert text on X11's clipboard to current buffer."
+    (interactive)
+    (insert (shell-command-to-string "xsel -b")))
+
+  (defun x-copy ()
+    "copy text on local kill-ring to X11's clipboard."
+    (interactive)
+    (copy-region-as-kill (point) (mark t))
+    (let ((process-connection-type nil))
+        (let ((proc (start-process "xsel" "*Messages*" "xsel" "-i" "-b")))
+          (process-send-string proc (car kill-ring))
+          (process-send-eof proc))))
+  (xclip-mode t)
+#+END_SRC
 #+BEGIN_SRC emacs-lisp
   (load-file "~/.emacs-private.el")
+#+END_SRC
+* windows
+#+BEGIN_SRC emacs-lisp
+(winner-mode t)
+(windmove-default-keybindings)
 #+END_SRC
