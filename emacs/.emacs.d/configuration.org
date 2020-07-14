@@ -19,6 +19,13 @@ not /totally/ sure about that, but we're gettin' close.
   (setq use-package-always-ensure t)
 #+END_SRC
 
+#+BEGIN_SRC emacs-lisp
+  (use-package quelpa-use-package
+    :ensure t
+    :config
+    (setq quelpa-upgrade-interval 7)
+    (add-hook #'after-init-hook #'quelpa-upgrade-all-maybe))
+#+END_SRC
 Always compile packages, and use the newest version available.
 
 #+BEGIN_SRC emacs-lisp
@@ -486,7 +493,19 @@ project root (if I'm not in a "real" project).
 I like tree-based undo management. I only rarely need it, but when I do, oh boy.
 
 #+BEGIN_SRC emacs-lisp
-  (use-package undo-tree)
+  (use-package undo-tree
+  ;; :disabled t
+  :defer t
+  :ensure t
+  :diminish undo-tree-mode
+  :init
+  (global-undo-tree-mode)
+  (defalias 'redo 'undo-tree-redo)
+  :config
+  (setq undo-tree-visualizer-timestamps t)
+  (setq undo-tree-visualizer-diff t)
+  :bind (("C-z" . undo)
+         ("C-S-z" . undo-tree-redo)))
 #+END_SRC
 
 * Programming environments
@@ -694,113 +713,177 @@ correctly formatted.
 ** Python
 
 #+BEGIN_SRC emacs-lisp
-  (setq python-saved-check-command nil)
+    (setq python-saved-check-command nil)
 
-  (defun find_nearest_tox_venv ()
-    (let ((dominating-file (locate-dominating-file default-directory
-                                                   (lambda (dir)
-                                                     (cl-intersection
-                                                      `(".tox")
-                                                      (directory-files dir)
-                                                      :test 'string-equal)))))
-      (when dominating-file
-        (expand-file-name ".tox/py37" dominating-file))))
+    (defun find_nearest_tox_venv ()
+      (let ((dominating-file (locate-dominating-file default-directory
+                                                     (lambda (dir)
+                                                       (cl-intersection
+                                                        `(".tox")
+                                                        (directory-files dir)
+                                                        :test 'string-equal)))))
+        (when dominating-file
+          (expand-file-name ".tox/py37" dominating-file))))
 
-  (defun activate-venv-and-reload ()
-    (let ((venv (find_nearest_tox_venv)))
-      (when venv
-        (pyvenv-activate venv))))
+    (defun activate-venv-and-reload ()
+      (let ((venv (find_nearest_tox_venv)))
+        (when venv
+          (pyvenv-activate venv))))
 
-  ;; (use-package auto-virtualenv
-  ;;   :ensure t
-  ;;   :config
-  ;;   ;; (add-hook 'python-mode-hook 'auto-virtualenv-set-virtualenv)
-  ;;   ;; (add-hook 'projectile-after-switch-project-hook 'auto-virtualenv-set-virtualenv)
+    ;; (use-package auto-virtualenv
+    ;;   :ensure t
+    ;;   :config
+    ;;   ;; (add-hook 'python-mode-hook 'auto-virtualenv-set-virtualenv)
+    ;;   ;; (add-hook 'projectile-after-switch-project-hook 'auto-virtualenv-set-virtualenv)
 
-  (defvar venv_switch-buffer-functions--last-buffer
-    nil
-    "The last current buffer.")
+    (defvar venv_switch-buffer-functions--last-buffer
+      nil
+      "The last current buffer.")
 
-  (defun venv_switch-buffer-functions-run (&rest _)
-    "Run `switch-buffer-functions' if needed.
-  This function checks the result of `current-buffer', and run
-  `switch-buffer-functions' when it has been changed from
-  the last buffer.
-  This function should be hooked to `post-command-hook'."
-    (when (eq major-mode 'python-mode)
-    (unless (eq (current-buffer)
-                  venv_switch-buffer-functions--last-buffer)
-        (let ((current (current-buffer))
-              (previous venv_switch-buffer-functions--last-buffer))
-          (setq venv_switch-buffer-functions--last-buffer
-                current)
-          (activate-venv-and-reload)))))
-  (add-hook 'window-selection-change-functions 'venv_switch-buffer-functions-run)
+    (defun venv_switch-buffer-functions-run (&rest _)
+      "Run `switch-buffer-functions' if needed.
+      This function checks the result of `current-buffer', and run
+      `switch-buffer-functions' when it has been changed from
+      the last buffer.
+      This function should be hooked to `post-command-hook'."
+      (when (eq major-mode 'python-mode)
+        (unless (eq (current-buffer)
+                    venv_switch-buffer-functions--last-buffer)
+          (let ((current (current-buffer))
+                (previous venv_switch-buffer-functions--last-buffer))
+            (setq venv_switch-buffer-functions--last-buffer
+                  current)
+            (activate-venv-and-reload)))))
+    (add-hook 'window-selection-change-functions 'venv_switch-buffer-functions-run)
 
-  ;; ;; (use-package anaconda-mode
-  ;;   :ensure t
-  ;;   :config
-  ;;   (add-hook 'python-mode-hook 'anaconda-mode)
-  ;;   (add-hook 'python-mode-hook 'anaconda-eldoc-mode)
-  ;;   :diminish anaconda-mode
-  ;;   :diminish eldoc-mode
-  ;;   :diminish auto-revert-mode)
+    ;; ;; (use-package anaconda-mode
+    ;;   :ensure t
+    ;;   :config
+    ;;   (add-hook 'python-mode-hook 'anaconda-mode)
+    ;;   (add-hook 'python-mode-hook 'anaconda-eldoc-mode)
+    ;;   :diminish anaconda-mode
+    ;;   :diminish eldoc-mode
+    ;;   :diminish auto-revert-mode)
 
-  ;; (use-package company-anaconda
-  ;;   :ensure t
-  ;;   :config
-  ;;   (add-to-list 'company-backends 'company-anaconda))
-  ;;
+    ;; (use-package company-anaconda
+    ;;   :ensure t
+    ;;   :config
+    ;;   (add-to-list 'company-backends 'company-anaconda))
+    ;;
 
-  (use-package python-docstring
-    :ensure t
-    :config
-    (python-docstring-install)
-    :diminish python-docstring-mode)
+    (use-package python-docstring
+      :ensure t
+      :config
+      (python-docstring-install)
+      :diminish python-docstring-mode)
 
-  ;; ipython support, also remove weird character on ipython prompt
-  (when (executable-find "ipython")
-    (setq python-shell-interpreter "ipython")
-    (setq python-shell-interpreter-args "--simple-prompt"))
+    ;; ipython support, also remove weird character on ipython prompt
+    (when (executable-find "ipython")
+      (setq python-shell-interpreter "ipython")
+      (setq python-shell-interpreter-args "--simple-prompt"))
 
-  (use-package blacken
-    :ensure t
-    :diminish blacken-mode
-    ;; :hook (python-mode . blacken-mode)
-    :config
-    ;; (setq blacken-line-length 100)
-    :bind (([?\C-c ?\C-x ?a] . blacken-buffer)))
+    (use-package blacken
+      :ensure t
+      :diminish blacken-mode
+      ;; :hook (python-mode . blacken-mode)
+      :config
+      ;; (setq blacken-line-length 100)
+      :bind (([?\C-c ?\C-x ?a] . blacken-buffer)))
 
-  (use-package pyvenv
-    :ensure t
-    :bind (([?\C-c ?\C-x ?v] . pyvenv-workon)))
+    (use-package pyvenv
+      :ensure t
+      :bind (([?\C-c ?\C-x ?v] . pyvenv-workon)))
 
-  (use-package pip-requirements
-    :ensure t
-    :preface
-    (defun me/pip-requirements-ignore-case ()
-      (setq-local completion-ignore-case t))
-    :init (add-hook 'pip-requirements-mode-hook #'me/pip-requirements-ignore-case))
+    (use-package pip-requirements
+      :ensure t
+      :preface
+      (defun me/pip-requirements-ignore-case ()
+        (setq-local completion-ignore-case t))
+      :init (add-hook 'pip-requirements-mode-hook #'me/pip-requirements-ignore-case))
 
-  (use-package python-pytest
-    :ensure t
-    :bind (("C-c C-x t" . python-pytest-popup)))
+    (use-package python-pytest
+      :ensure t
+      :bind (("C-c C-x t" . python-pytest-popup)))
 
-  (use-package smart-dash
-    :ensure t
-    :config
-    (add-hook 'python-mode-hook 'smart-dash-mode))
+    (use-package smart-dash
+      :ensure t
+      :config
+      (add-hook 'python-mode-hook 'smart-dash-mode))
 
-  (use-package pipenv
-    :ensure t
-    :hook (python-mode . pipenv-mode)
-    :diminish pipenv-mode
-    :init
-    (setq
-     pipenv-projectile-after-switch-function
-     #'pipenv-projectile-after-switch-default)
-    (setq pipenv-keymap-prefix (kbd "C-c C-o")))
+    (use-package pipenv
+      :ensure t
+      :hook (python-mode . pipenv-mode)
+      :diminish pipenv-mode
+      :init
+      (setq
+       pipenv-projectile-after-switch-function
+       #'pipenv-projectile-after-switch-default)
+      (setq pipenv-keymap-prefix (kbd "C-c C-o")))
+
+;; Elpy+flycheck
+(use-package company
+  :ensure t)
+(use-package company-jedi
+  :ensure t)
+(use-package elpy
+  :ensure t
+  :after (company company-jedi)
+  :config
+  (elpy-enable)
+  (setq python-shell-interpreter "ipython"
+  	python-shell-interpreter-args "-i --simple-prompt --no-banner")
+  (setq elpy-test-runner 'elpy-test-pytest-runner)
+  ;; (setq python-shell-interpreter "jupyter"
+  ;; 	python-shell-interpreter-args "console --simple-prompt"
+  ;; 	python-shell-prompt-detect-failure-warning nil)
+  ;; (add-to-list 'python-shell-completion-native-disabled-interpreters
+  ;;           "jupyter")
+  (add-hook 'elpy-mode-hook (lambda () (local-set-key (kbd "<f5>") "import pdb; pdb.set_trace()"))))
+
+(use-package flycheck
+  :ensure t
+  :after (elpy)
+  :init (global-flycheck-mode)
+  :config
+  ;; use flycheck instead of flymake in elpy
+  (when (load "flycheck" t t)
+    (setq elpy-modules (delq 'elpy-module-flymake elpy-modules))
+    (add-hook 'elpy-mode-hook 'flycheck-mode))
+  (setq flycheck-clang-include-path '("/usr/local/include/python3.7m")))
+
+  ;; ;; set prefix for lsp-command-keymap (few alternatives - "C-l", "C-c l")
+  ;; (setq lsp-keymap-prefix "s-l")
+
+  ;; (use-package lsp-mode
+  ;;     :hook (;; replace XXX-mode with concrete major-mode(e. g. python-mode)
+  ;;             (python-mode . lsp)
+  ;;             ;; if you want which-key integration
+  ;;             (lsp-mode . lsp-enable-which-key-integration))
+  ;;     :commands lsp)
+
+  ;; ;; optionally
+  ;; (use-package lsp-ui :commands lsp-ui-mode)
+  ;; ;; if you are helm user
+  ;; ;; (use-package helm-lsp :commands helm-lsp-workspace-symbol)
+  ;; ;; if you are ivy user
+  ;;  (use-package lsp-ivy :commands lsp-ivy-workspace-symbol)
+  ;;  (use-package lsp-treemacs :commands lsp-treemacs-errors-list)
+
+  ;; ;; optionally if you want to use debugger
+  ;; (use-package dap-mode)
+  ;; ;; (use-package dap-LANGUAGE) to load the dap adapter for your language
+
+  ;; ;; optional if you want which-key integration
+  ;; (use-package which-key
+  ;;     :config
+  ;;     (which-key-mode))
+
+  ;; (setq company-minimum-prefix-length 1
+  ;;       company-idle-delay 0.0)
+
+
 #+END_SRC
+
 
 ** Ruby and RSpec
 
@@ -997,6 +1080,121 @@ the tests from any buffer.
   (add-hook 'yaml-mode-hook 'rspec-mode)
 #+END_SRC
 
+** eshell
+   #+BEGIN_SRC emacs-lisp
+     (use-package aweshell
+       :quelpa (aweshell :fetcher git :url "https://github.com/manateelazycat/aweshell.git")
+       :defer 1
+       :config
+       (with-eval-after-load "esh-opt"
+         (autoload 'epe-theme-lambda "eshell-prompt-extras")
+         (setq eshell-highlight-prompt nil
+               eshell-prompt-function 'epe-theme-lambda)))
+
+     (use-package exec-path-from-shell
+       :ensure t)
+
+     (use-package esh-autosuggest
+       :ensure t
+       :hook (eshell-mode . esh-autosuggest-mode))
+     (use-package eshell-prompt-extras
+       :ensure t)
+
+     (require 'em-term)
+
+     (add-to-list 'eshell-visual-commands "htop")
+     (add-to-list 'eshell-visual-commands "top")
+     (add-to-list 'eshell-visual-commands "vim")
+
+     (setq eshell-destroy-buffer-when-process-dies t)
+
+     (defun eshell-exec-visual (&rest args)
+       "Run the specified PROGRAM in a terminal emulation buffer.
+                ARGS are passed to the program.  At the moment, no piping of input is
+                allowed."
+       (let* (eshell-interpreter-alist
+              (original-args args)
+              (interp (eshell-find-interpreter (car args) (cdr args)))
+              (in-ssh-tramp (and (tramp-tramp-file-p default-directory)
+                                 (equal (tramp-file-name-method
+                                         (tramp-dissect-file-name default-directory))
+                                        "ssh")))
+              (program (if in-ssh-tramp
+                           "ssh"
+                         (car interp)))
+              (args (if in-ssh-tramp
+                        (let ((dir-name (tramp-dissect-file-name default-directory)))
+                          (eshell-flatten-list
+                           (list
+                            "-t"
+                            (tramp-file-name-host dir-name)
+                            (format
+                             "export TERM=eterm-color; cd %s; exec %s"
+                             (tramp-file-name-localname dir-name)
+                             (string-join
+                              (append
+                               (list (tramp-file-name-localname (tramp-dissect-file-name (car interp))))
+                               (cdr args))
+                              " ")))))
+                      (eshell-flatten-list
+                       (eshell-stringify-list (append (cdr interp)
+                                                      (cdr args))))))
+              (term-buf
+               (generate-new-buffer
+                (concat "*"
+                        (if in-ssh-tramp
+                            (format "%s %s" default-directory (string-join original-args " "))
+                          (file-name-nondirectory program))
+                        "*")))
+              (eshell-buf (current-buffer)))
+         (save-current-buffer
+           (switch-to-buffer term-buf)
+           (term-mode)
+           (set (make-local-variable 'term-term-name) eshell-term-name)
+           (make-local-variable 'eshell-parent-buffer)
+           (setq eshell-parent-buffer eshell-buf)
+           (term-exec term-buf program program nil args)
+           (let ((proc (get-buffer-process term-buf)))
+             (if (and proc (eq 'run (process-status proc)))
+                 (set-process-sentinel proc 'eshell-term-sentinel)
+               (error "Failed to invoke visual command")))
+           (term-char-mode)
+           (if eshell-escape-control-x
+               (term-set-escape-char ?\C-x))))
+       nil)
+     ;; cache file-name forever
+     (setq remote-file-name-inhibit-cache nil)
+
+     ;; make sure vc stuff is not making tramp slower
+     (setq vc-ignore-dir-regexp
+           (format "%s\\|%s"
+                   vc-ignore-dir-regexp
+                   tramp-file-name-regexp))
+
+     ;; not sure why we have this? just cargo-culting from an answer I saw
+     ;; online.
+     (setq tramp-verbose 1)
+
+     ;; projectile has the fun side-effect of wanting to calculate the
+     ;; project name, which makes tramp oh-so-much-slower.
+     (setq projectile-mode-line "Projectile")
+
+     (setq eshell-history-size 1000000)
+     (require 'term)
+
+     (defun jnm/term-toggle-mode ()
+       "Toggles term between line mode and char mode"
+       (interactive)
+       (if (term-in-line-mode)
+           (term-char-mode)
+         (term-line-mode)))
+
+     (define-key term-mode-map (kbd "C-c C-j") 'jnm/term-toggle-mode)
+     (define-key term-mode-map (kbd "C-c C-k") 'jnm/term-toggle-mode)
+
+     (define-key term-raw-map (kbd "C-c C-j") 'jnm/term-toggle-mode)
+     (define-key term-raw-map (kbd "C-c C-k") 'jnm/term-toggle-mode)
+   #+END_SRC
 * Terminal
 
 I use =multi-term= to manage my shell sessions. It's bound to =C-c t=.
