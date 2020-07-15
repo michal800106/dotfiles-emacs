@@ -172,7 +172,7 @@ I don't usually use the menu or scroll bar, and they take up useful space.
 #+BEGIN_SRC emacs-lisp
   (tool-bar-mode 0)
   (menu-bar-mode 0)
-  (scroll-bar-mode -1)
+  (if (fboundp 'scroll-bar-mode) (scroll-bar-mode -1))
 #+END_SRC
 
 There's a tiny scroll bar that appears in the minibuffer window. This disables
@@ -243,19 +243,6 @@ frame is themed appropriately.
                   (with-selected-frame frame (hrs/apply-theme))))
     (hrs/apply-theme))
 #+END_SRC
-
-** Use =moody= for a beautiful modeline
-
-This gives me a truly lovely ribbon-based modeline.
-
-#+BEGIN_SRC emacs-lisp
-  (use-package moody
-    :config
-    (setq x-underline-at-descent-line t)
-    (moody-replace-mode-line-buffer-identification)
-    (moody-replace-vc-mode))
-#+END_SRC
-
 ** Use =minions= to hide all minor modes
 
 I never want to see a minor mode, and manually adding =:diminish= to every
@@ -823,8 +810,20 @@ correctly formatted.
 ;; Elpy+flycheck
 (use-package company
   :ensure t)
-(use-package company-jedi
-  :ensure t)
+
+;; jedi - Python auto-completion for Emacs
+;; company-jedi - company backend for Python's jedi
+(use-package jedi
+  :ensure t
+  :init
+  (add-to-list 'company-backends 'company-jedi)
+  :config
+  (use-package company-jedi
+	:ensure t
+	:init
+	(add-hook 'python-mode-hook (lambda () (add-to-list 'company-backends 'company-jedi)))
+	(setq company-jedi-python-bin "python")))
+
 (use-package elpy
   :ensure t
   :after (company company-jedi)
@@ -1195,6 +1194,10 @@ the tests from any buffer.
      (define-key term-raw-map (kbd "C-c C-j") 'jnm/term-toggle-mode)
      (define-key term-raw-map (kbd "C-c C-k") 'jnm/term-toggle-mode)
    #+END_SRC
+
+   #+RESULTS:
+   : jnm/term-toggle-mode
+
 * Terminal
 
 I use =multi-term= to manage my shell sessions. It's bound to =C-c t=.
@@ -2301,4 +2304,15 @@ Remap when working in terminal Emacs.
 #+BEGIN_SRC emacs-lisp
 (winner-mode t)
 (windmove-default-keybindings)
+#+END_SRC
+* sql
+#+BEGIN_SRC emacs-lisp
+(use-package ejc-sql
+:ensure t
+:config
+(add-hook 'ejc-sql-hook
+(lambda()
+;; (setq cider-lein-parameters "repl :headless :host localhost")
+(ejc-set-rows-limit 1000)))
+)
 #+END_SRC
